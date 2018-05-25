@@ -24,6 +24,12 @@ byte LED_B;
 int DIMM_STEP = 15;
 
 bool isOn = true;
+short loop_count = 0;
+short blink_freq = 0;
+short fading = 0;
+short fading_LED_R = 255;
+short fading_LED_G = 0;
+short fading_LED_B = 0;
 
 IRrecv irrecv(RECV_PIN);
 
@@ -66,17 +72,50 @@ void loop() {
   irrecv.resume(); // Receive the next value
   }
 
-  delay(100);
+  if(blink_freq){
+    blink_led();
+  }
 
-
-    
-
+  if(fading){
+    fade();
+  }
   
-    
+  delay(100);
+  loop_count++;
+}
+
+void fade(){
+
+Serial.println(String(fading_LED_R)+" "+String(fading_LED_G)+" "+String(fading_LED_B));
+
+  if(fading_LED_R>=255 && fading_LED_G<255&& fading_LED_B<=0 ){
+     fading_LED_G+=fading;
+  }else if(fading_LED_R>0 && fading_LED_G>=255 && fading_LED_B<=0){
+    fading_LED_R-=fading;
+  }else if(fading_LED_G>=255 && fading_LED_R<=0 && fading_LED_B<255){
+    fading_LED_B+=fading;
+  }else if(fading_LED_B>=255 && fading_LED_R<=0 && fading_LED_G>0){
+    fading_LED_G-=fading;
+  }else if(fading_LED_R<255 && fading_LED_G<=0 && fading_LED_B>=255){
+    fading_LED_R+=fading;
+  }else if(fading_LED_R>=255 && fading_LED_G<=0 && fading_LED_B>0){
+    fading_LED_B-=fading;
+  }
+  
+  analogWrite(LED_PIN_R, fading_LED_R);
+  analogWrite(LED_PIN_G, fading_LED_G);
+  analogWrite(LED_PIN_B, fading_LED_B);
+}
+
+void blink_led(){
+  if((loop_count%blink_freq)==0){
+    power();
+  }
 }
 
 void decodeIR(unsigned long ir_code){
   Serial.println("DecodeIR");
+  
     //R
     if(ir_code == 2833276859){
       setRGB(255,0,0);
@@ -156,7 +195,50 @@ void decodeIR(unsigned long ir_code){
     }else if(ir_code == 1145637499){
       // W--
       bright(-DIMM_STEP);
+    }else 
+    //blink
+    if(ir_code == 1541889663){
+      // quick
+      blink_led(1);
+    }else if(ir_code == 2388475579){
+      // slow
+      blink_led(5);
+    }else
+    //fade
+    if(ir_code == 900285023){
+      fading = (fading==1? 0: 1);
+      if(fading!=0){
+        short fading_LED_R = 255;
+        short fading_LED_G = 0;
+        short fading_LED_B = 0;
+      }
+    }else if(ir_code == 3577243675){
+      fading = (fading==5? 0: 5);
+      if(fading!=0){
+        short fading_LED_R = 255;
+        short fading_LED_G = 0;
+        short fading_LED_B = 0;
+      }
+    }else if(ir_code == 4034314555){
+      fading = (fading==15? 0: 15);
+      if(fading!=0){
+        short fading_LED_R = 255;
+        short fading_LED_G = 0;
+        short fading_LED_B = 0;
+      }
+        
     }
+}
+
+void blink_led(int freq){
+      Serial.println("Blink freq: "+String(freq));
+      if(blink_freq!=0){
+        blink_freq = 0;
+        if(isOn==false)
+        power();
+      }else{
+        blink_freq = freq;  
+      }
 }
 
 void setRGB(byte R, byte G, byte B){
@@ -182,7 +264,7 @@ void bright(int val){
   Serial.println("VAL:"+String(val));
   if(val>0){
     if(LED_R != 0)
-    LED_R = (LED_R+val>255 ? 0 : LED_B+val);
+    LED_R = (LED_R+val>255 ? 0 : LED_R+val);
     if(LED_G != 0)
     LED_G = (LED_G+val>255 ? 0 : LED_G+val);
     if(LED_B != 0)
@@ -191,7 +273,7 @@ void bright(int val){
 
   if(val<0){
     if(LED_R != 0)
-    LED_R = (LED_R+val<0 ? 0 : LED_B+val);
+    LED_R = (LED_R+val<0 ? 0 : LED_R+val);
     if(LED_G != 0)
     LED_G = (LED_G+val<0 ? 0 : LED_G+val);
     if(LED_B != 0)
